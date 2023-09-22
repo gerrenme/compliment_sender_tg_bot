@@ -1,5 +1,8 @@
 import telebot
+import threading
 import psycopg2
+import schedule
+import time
 
 from telebot import types
 from re import match
@@ -12,6 +15,7 @@ class ComplementSender:
         self.user_id = ""
         self.connection = psycopg2.connect(host=host, user=user, password=password, database=db_name)
         self.connection.autocommit = True
+        self.chat_id = '1254904638'
 
         @self.bot.message_handler(commands=['start'])
         def start(message):
@@ -25,7 +29,14 @@ class ComplementSender:
             markup.add(check_users_btn)
             markup.add(send_complement_btn)
 
+            get_chat_id(message)
+
             self.bot.send_message(message.from_user.id, "test_message for start", reply_markup=markup)
+
+        @self.bot.message_handler(commands=['chat'])
+        def get_chat_id(message):
+            self.chat_id = message.from_user.id
+            print(f'[LOG_get_chat_id] Chat ID is {self.chat_id}')
 
         @self.bot.message_handler(content_types=['text'])
         def get_text_messages(message):
@@ -38,16 +49,14 @@ class ComplementSender:
                 self.bot.send_message(message.from_user.id, "Preparing data, please wait a few seconds")
                 show_users(message)
 
-            elif message.text:
-                pass
-
             else:
-                self.bot.send_message(message.from_user.id, "I do not understand what you want. Please use one of the standard commands")
+                self.bot.send_message(message.from_user.id, "I do not understand what you want. Please use one of "
+                                                            "the standard commands")
 
         def add_user(user_id):
             user_id.text = user_id.text.lower()
             if (user_id.text[0].isdigit() or len(user_id.text) < 5 or user_id.text[0] == '_' or
-                    bool(match(r"^[a-zA-Z0-9_]*$", user_id.text))):
+                    not bool(match(r"^[a-zA-Z][a-zA-Z0-9_]*$", user_id.text))):
                 self.bot.send_message(user_id.from_user.id, "User_id must be at least 5 characters long, and the "
                                                             "first character cannot be a number or an underscore. "
                                                             "The following characters are allowed: a-z, 0-9, _")
@@ -76,9 +85,7 @@ class ComplementSender:
                     data = cursor.fetchall()
 
                     if data is not None:
-                        print(data)
                         users = [t[0] for t in data]
-                        print(users)
                         self.bot.send_message(message.from_user.id, "\n".join(users))
 
                     else:
@@ -87,6 +94,9 @@ class ComplementSender:
             except Exception as _ex:
                 print(f"[LOG_show_users] Error!! {_ex}")
 
+    def send_minute_message(self):
+        self.bot.send_message(self.chat_id, "minute message")
+
     def run(self):
         with self.connection.cursor() as cursor:
             cursor.execute(f"DROP TABLE IF EXISTS {entity_name};")
@@ -94,7 +104,13 @@ class ComplementSender:
             user_id VARCHAR(50) PRIMARY KEY
                            );""")
 
-        self.bot.polling(none_stop=True, interval=0)
+        main_thread = threading.Thread(target=self.bot.polling, kwargs={"none_stop": True, "interval": 0})
+        message_thread = threading.Thread(target=self.send_minute_message)
+
+        message_thread.daemon = True
+
+        main_thread.start()
+        message_thread.start()
 
 
 if __name__ == "__main__":
