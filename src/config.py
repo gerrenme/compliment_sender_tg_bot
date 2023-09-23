@@ -1,5 +1,7 @@
-host = '127.0.0.1'
-user = 'gerrenme'
-password = '1'
+db_host = '127.0.0.1'
+db_user = 'gerrenme'
+db_password = '1'
 db_name = 'compliment_sender'
-entity_name = "users"
+db_entity_name = "users"
+
+admin_password = "1"
