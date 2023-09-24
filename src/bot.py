@@ -2,37 +2,41 @@ import telebot
 import threading
 import psycopg2
 
-from telebot import types
 from config import db_host, db_user, db_password, db_name, db_entity_name, admin_password
+from typing import List, Tuple
 
 
 class ComplementSender:
-    def __init__(self):
+    def __init__(self) -> None:
         self.bot = telebot.TeleBot('6353944311:AAF3BwfqcHAdFX3IqWe6H6HVXC55OXyxEyY')
 
-        self.connection = psycopg2.connect(host=db_host, user=db_user, password=db_password, database=db_name)
+        self.connection: psycopg2.connect = psycopg2.connect(host=db_host, user=db_user,
+                                                             password=db_password, database=db_name)
         self.connection.autocommit = True
 
-        self.username = ""
-        self.chat_id = '0000000000'
+        self.username: str = ""
+        self.chat_id: str = "0000000000"
 
         @self.bot.message_handler(commands=['start'])
-        def start(message):
+        def start(message: telebot.types.Message) -> None:
             add_user(message)
 
         @self.bot.message_handler(commands=['chat'])
-        def get_user_data(message):
+        def get_user_data(message: telebot.types.Message) -> None:
             self.chat_id = message.from_user.id
             self.username = message.from_user.username
 
         @self.bot.message_handler(content_types=['text'])
-        def get_text_messages(message):
+        def get_text_messages(message: telebot.types.Message) -> None:
             get_user_data(message)
 
             with self.connection.cursor() as cursor:
                 cursor.execute(
-                    f"SELECT * FROM {db_entity_name} WHERE username = '{message.from_user.username}';")
-                data = cursor.fetchall()
+                    f"SELECT * "
+                    f"FROM {db_entity_name} "
+                    f"WHERE username = '{message.from_user.username}';")
+                
+                data: List[Tuple[str, str, int, int]] = cursor.fetchall()
 
                 if data is not None and data != []:
                     if message.text == "/send":
@@ -45,13 +49,15 @@ class ComplementSender:
                         get_stat(message)
 
                     elif message.text == "/top":
-                        get_top_users(message)
+                        get_top_users()
 
                     elif message.text == "/admin_show_db":
+                        print(f'[LOG_show_all_users] User {self.username} requests admin rights')
                         self.bot.send_message(message.from_user.id, "Enter admin password")
                         self.bot.register_next_step_handler(message, show_all_users)
 
                     elif message.text == "/admin_show_user_data":
+                        print(f'[LOG_show_all_users] User {self.username} requests admin rights')
                         self.bot.send_message(message.from_user.id,
                                               f"Current chat id is {self.chat_id} and username is {self.username}")
 
@@ -73,18 +79,23 @@ class ComplementSender:
                     self.bot.send_message(message.from_user.id, f"You need to register in the bot using the "
                                                                 f"/start command to get statistics")
 
-        def add_user(message):
+        def add_user(message: telebot.types.Message) -> None:
             get_user_data(message)
             try:
                 with self.connection.cursor() as cursor:
                     cursor.execute(
-                        f"SELECT * FROM {db_entity_name} WHERE username = '{self.username}';")
-                    result = cursor.fetchone()
+                        f"SELECT * "
+                        f"FROM {db_entity_name} "
+                        f"WHERE username = '{self.username}';")
+
+                    result: List[Tuple[str, str, int, int]] = cursor.fetchone()
 
                 if result is None:
                     with self.connection.cursor() as cursor:
                         cursor.execute(
-                            f"INSERT INTO {db_entity_name} VALUES('{self.username}', '{self.chat_id}', 0, 0);")
+                            f"INSERT INTO {db_entity_name} "
+                            f"VALUES('{self.username}', '{self.chat_id}', 0, 0);")
+
                         self.bot.send_message(self.chat_id, "You have successfully registered, "
                                                             "But you can invite your friends to register in the bot "
                                                             "to send them compliments!!")
@@ -95,14 +106,15 @@ class ComplementSender:
             except Exception as _ex:
                 print(f"[LOG_add_user] Error!! {_ex}")
 
-        def show_all_users(message):
-            print(f'[LOG_show_all_users] User {self.username} requests admin rights')
+        def show_all_users(message: telebot.types.Message) -> None:
             if check_admin_password(message):
                 try:
                     with self.connection.cursor() as cursor:
                         cursor.execute(
-                            f"SELECT * FROM {db_entity_name};")
-                        data = cursor.fetchall()
+                            f"SELECT * "
+                            f"FROM {db_entity_name};")
+
+                        data: List[Tuple[str, str, int, int]] = cursor.fetchall()
 
                         if data is not None:
                             users = [f"User {t[0]} received {t[2]} compliments" for t in data]
@@ -116,20 +128,29 @@ class ComplementSender:
                 print(f'[LOG_show_all_users] Incorrect password from user {self.username}')
                 self.bot.send_message(message.from_user_id, "Incorrect password")
 
-        def send_complement(message):
-            get_user_data(message)
+        def send_complement(message: telebot.types.Message) -> None:
             try:
                 with self.connection.cursor() as cursor:
-                    cursor.execute(f"SELECT * FROM {db_entity_name} WHERE username = '{message.text.split()[0]}';")
-                    data = cursor.fetchall()
+                    cursor.execute(f"SELECT * "
+                                   f"FROM {db_entity_name} "
+                                   f"WHERE username = '{message.text.split()[0]}';")
+
+                    data: List[Tuple[str, str, int, int]] = cursor.fetchall()
 
                     if data is not None and data != []:
                         cursor.execute(
-                            f"UPDATE {db_entity_name} SET complements_received = complements_received + 1 WHERE username = '{data[0][0]}';")
-                        cursor.execute(
-                            f"UPDATE {db_entity_name} SET complements_sended = complements_sended + 1 WHERE username = '{self.username}';")
+                            f"UPDATE {db_entity_name} "
+                            f"SET complements_received = complements_received + 1 "
+                            f"WHERE username = '{data[0][0]}';")
 
-                        self.bot.send_message(data[0][1], f"You received a compliment!! {' '.join(message.text.split()[1:])}")
+                        cursor.execute(
+                            f"UPDATE {db_entity_name} "
+                            f"SET complements_sended = complements_sended + 1 "
+                            f"WHERE username = '{self.username}';")
+
+                        self.bot.send_message(data[0][1],
+                                              f"You received a compliment!! {' '.join(message.text.split()[1:])}")
+
                         self.bot.send_message(self.chat_id, "You have successfully sent a compliment!! "
                                                             "Someone's day just became a little kinder😊")
                         print(f'[LOG_send_complement] User {self.username} send complement to {data[0][0]}')
@@ -139,31 +160,42 @@ class ComplementSender:
             except Exception as _ex:
                 print(f"[LOG_send_complement] Error!! {_ex}")
 
-        def get_stat(message):
+        def get_stat(message: telebot.types.Message) -> None:
             try:
                 with self.connection.cursor() as cursor:
                     cursor.execute(
-                        f"SELECT * FROM {db_entity_name} WHERE username = '{message.from_user.username}';")
-                    data = cursor.fetchall()
+                        f"SELECT * "
+                        f"FROM {db_entity_name} "
+                        f"WHERE username = '{message.from_user.username}';")
+
+                    data: List[Tuple[str, str, int, int]] = cursor.fetchall()
                     self.bot.send_message(message.from_user.id, f"User {data[0][0]} sent {data[0][3]} "
                                                                 f"compliments and received {data[0][2]} compliments")
 
             except Exception as _ex:
                 print(f"[LOG_get_stat] Error!! {_ex}")
 
-        def get_top_users(message):
+        def get_top_users() -> None:
             try:
                 with self.connection.cursor() as cursor:
                     cursor.execute(
-                        f"SELECT us.username, us.complements_received FROM {db_entity_name} AS us ORDER BY us.complements_received DESC LIMIT 5;")
-                    top_received = cursor.fetchall()
+                        f"SELECT us.username, us.complements_received "
+                        f"FROM {db_entity_name} AS us "
+                        f"ORDER BY us.complements_received DESC "
+                        f"LIMIT 5;")
+
+                    top_received: List[Tuple[str, str, int, int]] = cursor.fetchall()
 
                     cursor.execute(
-                        f"SELECT us.username, us.complements_sended FROM {db_entity_name} AS us ORDER BY us.complements_sended DESC LIMIT 5;")
-                    top_sended = cursor.fetchall()
+                        f"SELECT us.username, us.complements_sended "
+                        f"FROM {db_entity_name} AS us "
+                        f"ORDER BY us.complements_sended DESC "
+                        f"LIMIT 5;")
+                    top_sended: List[Tuple[str, str, int, int]] = cursor.fetchall()
 
-                    message_received = "\n".join([f'User {t[0]} received {t[1]} complements' for t in top_received])
-                    message_sended = "\n".join([f'User {t[0]} sent {t[1]} complements' for t in top_sended])
+                    message_received: str = "\n".join([f'User {t[0]} received {t[1]} complements'
+                                                       for t in top_received])
+                    message_sended: str = "\n".join([f'User {t[0]} sent {t[1]} complements' for t in top_sended])
 
                     self.bot.send_message(self.chat_id, f"top_receivers are:\n{message_received}\n\n"
                                                         f"and top_senders are:\n{message_sended}")
@@ -171,12 +203,12 @@ class ComplementSender:
             except Exception as _ex:
                 print(f"[LOG_get_top_users] Error!! {_ex}")
 
-        def check_admin_password(message):
+        def check_admin_password(message) -> bool:
             return message.text == admin_password
 
-    def run(self):
+    def run(self) -> None:
         with self.connection.cursor() as cursor:
-            cursor.execute(f"DROP TABLE IF EXISTS {db_entity_name};")
+            # cursor.execute(f"DROP TABLE IF EXISTS {db_entity_name};")
             cursor.execute(f"""CREATE TABLE IF NOT EXISTS {db_entity_name} (
             username VARCHAR(50) PRIMARY KEY, 
             user_chat_id VARCHAR(10),
@@ -184,10 +216,11 @@ class ComplementSender:
             complements_sended INT
                            );""")
 
-        main_thread = threading.Thread(target=self.bot.polling, kwargs={"none_stop": True, "interval": 0})
+        main_thread: threading.Thread = threading.Thread(target=self.bot.polling,
+                                                         kwargs={"none_stop": True, "interval": 0})
         main_thread.start()
 
 
 if __name__ == "__main__":
-    complement_sender = ComplementSender()
+    complement_sender: ComplementSender = ComplementSender()
     complement_sender.run()
