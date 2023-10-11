@@ -2,7 +2,7 @@ import telebot
 import threading
 import psycopg2
 
-from config import db_host, db_user, db_password, db_name, db_entity_name, admin_password
+from config import db_host, db_user, db_password, db_name, db_entity_name, admin_password, info_message
 from typing import List, Tuple
 
 
@@ -40,9 +40,7 @@ class ComplementSender:
 
                 if data is not None and data != []:
                     if message.text == "/send":
-                        self.bot.send_message(message.from_user.id, "First indicate the id of the person to whom "
-                                                                    "you want to send a compliment, then (separated by "
-                                                                    "a space) - the compliment itself")
+                        self.bot.send_message(message.from_user.id, info_message["send_standard_compliment"])
                         self.bot.register_next_step_handler(message, send_complement)
 
                     elif message.text == "/stat":
@@ -63,21 +61,13 @@ class ComplementSender:
 
                     elif message.text == "/help":
                         self.bot.send_message(message.from_user.id,
-                                              "This bot is designed to send anonymous comments to other users who "
-                                              "are also using the bot. You can send the following commands:\n"
-                                              " /start - to start interacting with the bot\n"
-                                              " /send - to send an anonymous compliment to another user\n"
-                                              " /stat - to get statistics on your account\n"
-                                              " /top - to get top 5 users based on received and sent compliments")
+                                              info_message["bot_help"])
 
                     else:
-                        self.bot.send_message(message.from_user.id,
-                                              "Unfortunately, I don't know such commands. Please use the /help "
-                                              "command to see the bot capabilities")
+                        self.bot.send_message(message.from_user.id, info_message["miss_command"])
 
                 else:
-                    self.bot.send_message(message.from_user.id, f"You need to register in the bot using the "
-                                                                f"/start command to get statistics")
+                    self.bot.send_message(message.from_user.id, info_message["need_register"])
 
         def add_user(message: telebot.types.Message) -> None:
             get_user_data(message)
@@ -96,12 +86,10 @@ class ComplementSender:
                             f"INSERT INTO {db_entity_name} "
                             f"VALUES('{self.username}', '{self.chat_id}', 0, 0);")
 
-                        self.bot.send_message(self.chat_id, "You have successfully registered, "
-                                                            "But you can invite your friends to register in the bot "
-                                                            "to send them compliments!!")
+                        self.bot.send_message(self.chat_id, info_message["success_register"])
 
                 else:
-                    self.bot.send_message(self.chat_id, "You are already registered in my database")
+                    self.bot.send_message(self.chat_id, info_message["already_register"])
 
             except Exception as _ex:
                 print(f"[LOG_add_user] Error!! {_ex}")
@@ -151,12 +139,11 @@ class ComplementSender:
                         self.bot.send_message(data[0][1],
                                               f"You received a compliment!! {' '.join(message.text.split()[1:])}")
 
-                        self.bot.send_message(self.chat_id, "You have successfully sent a compliment!! "
-                                                            "Someone's day just became a little kinder😊")
+                        self.bot.send_message(self.chat_id, info_message["success_compliment"])
                         print(f'[LOG_send_complement] User {self.username} send complement to {data[0][0]}')
 
                     else:
-                        self.bot.send_message(message.from_user.id, "There are no users in the database")
+                        self.bot.send_message(message.from_user.id, info_message["no_such_user"])
             except Exception as _ex:
                 print(f"[LOG_send_complement] Error!! {_ex}")
 
