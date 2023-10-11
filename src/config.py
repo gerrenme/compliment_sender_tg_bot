@@ -7,7 +7,7 @@ db_name: str = 'compliment_sender'
 db_entity_name: str = "users"
 
 admin_password: str = "1"
-open_ai_key: str = "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"
+open_ai_key: str = "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"
 telebot_key: str = "6353944311:AAF3BwfqcHAdFX3IqWe6H6HVXC55OXyxEyY"
 info_message: Dict[str, str] = {"send_standard_compliment": "First indicate the id of the person to whom "
                                                             "you want to send a compliment, then (separated by "
