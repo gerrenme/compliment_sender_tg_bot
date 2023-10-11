@@ -14,11 +14,11 @@ class ComplementSender:
         self.__bot = telebot.TeleBot(telebot_key)
 
         openai.api_key = open_ai_key
-        self.connection: psycopg2.connect = psycopg2.connect(host=db_host, user=db_user,
+        self.__connection: psycopg2.connect = psycopg2.connect(host=db_host, user=db_user,
                                                              password=db_password, database=db_name)
-        self.connection.autocommit = True
+        self.__connection.autocommit = True
 
-        self.username: str = ""
+        self._username: str = ""
         self.chat_id: str = "0000000000"
 
         @self.__bot.message_handler(commands=['start'])
@@ -28,13 +28,13 @@ class ComplementSender:
         @self.__bot.message_handler(commands=['chat'])
         def get_user_data(message: telebot.types.Message) -> None:
             self.chat_id = message.from_user.id
-            self.username = message.from_user.username
+            self._username = message.from_user.username
 
         @self.__bot.message_handler(content_types=['text'])
         def get_text_messages(message: telebot.types.Message) -> None:
             get_user_data(message)
 
-            with self.connection.cursor() as cursor:
+            with self.__connection.cursor() as cursor:
                 cursor.execute(
                     f"SELECT * "
                     f"FROM {db_entity_name} "
@@ -57,14 +57,14 @@ class ComplementSender:
                         get_top_users()
 
                     elif message.text == "/admin_show_db":
-                        print(f'[LOG_show_all_users] User {self.username} requests admin rights')
+                        print(f'[LOG_show_all_users] User {self._username} requests admin rights')
                         self.__bot.send_message(message.from_user.id, "Enter admin password")
                         self.__bot.register_next_step_handler(message, show_all_users)
 
                     elif message.text == "/admin_show_user_data":
-                        print(f'[LOG_show_all_users] User {self.username} requests admin rights')
+                        print(f'[LOG_show_all_users] User {self._username} requests admin rights')
                         self.__bot.send_message(message.from_user.id,
-                                                f"Current chat id is {self.chat_id} and username is {self.username}")
+                                                f"Current chat id is {self.chat_id} and username is {self._username}")
 
                     elif message.text == "/help":
                         self.__bot.send_message(message.from_user.id,
@@ -79,21 +79,22 @@ class ComplementSender:
         def add_user(message: telebot.types.Message) -> None:
             get_user_data(message)
             try:
-                with self.connection.cursor() as cursor:
+                with self.__connection.cursor() as cursor:
                     cursor.execute(
                         f"SELECT * "
                         f"FROM {db_entity_name} "
-                        f"WHERE username = '{self.username}';")
+                        f"WHERE username = '{self._username}';")
 
                     result: List[Tuple[str, str, int, int]] = cursor.fetchone()
 
                 if result is None:
-                    with self.connection.cursor() as cursor:
+                    with self.__connection.cursor() as cursor:
                         cursor.execute(
                             f"INSERT INTO {db_entity_name} "
-                            f"VALUES('{self.username}', '{self.chat_id}', 0, 0);")
+                            f"VALUES('{self._username}', '{self.chat_id}', 0, 0);")
 
                         self.__bot.send_message(self.chat_id, info_message["success_register"])
+                        print(f"[LOG_add_user] User {message.from_user.username} was added successfully")
 
                 else:
                     self.__bot.send_message(self.chat_id, info_message["already_register"])
@@ -104,7 +105,7 @@ class ComplementSender:
         def show_all_users(message: telebot.types.Message) -> None:
             if check_admin_password(message):
                 try:
-                    with self.connection.cursor() as cursor:
+                    with self.__connection.cursor() as cursor:
                         cursor.execute(
                             f"SELECT * "
                             f"FROM {db_entity_name};")
@@ -120,12 +121,12 @@ class ComplementSender:
                 except Exception as _ex:
                     print(f"[LOG_show_all_users] Error!! {_ex}")
             else:
-                print(f'[LOG_show_all_users] Incorrect password from user {self.username}')
+                print(f'[LOG_show_all_users] Incorrect password from user {self._username}')
                 self.__bot.send_message(message.from_user_id, "Incorrect password")
 
         def send_complement(message: telebot.types.Message) -> None:
             try:
-                with self.connection.cursor() as cursor:
+                with self.__connection.cursor() as cursor:
                     cursor.execute(f"SELECT * "
                                    f"FROM {db_entity_name} "
                                    f"WHERE username = '{message.text.split()[0]}';")
@@ -141,13 +142,13 @@ class ComplementSender:
                         cursor.execute(
                             f"UPDATE {db_entity_name} "
                             f"SET complements_sended = complements_sended + 1 "
-                            f"WHERE username = '{self.username}';")
+                            f"WHERE username = '{self._username}';")
 
                         self.__bot.send_message(data[0][1],
                                                 f"You received a compliment!! {' '.join(message.text.split()[1:])}")
 
                         self.__bot.send_message(self.chat_id, info_message["success_compliment"])
-                        print(f'[LOG_send_complement] User {self.username} send complement to {data[0][0]}')
+                        print(f'[LOG_send_complement] User {self._username} send complement to {data[0][0]}')
 
                     else:
                         self.__bot.send_message(message.from_user.id, info_message["no_such_user"])
@@ -156,7 +157,7 @@ class ComplementSender:
 
         def send_random_compliment(message: telebot.types.Message) -> None:
             try:
-                with self.connection.cursor() as cursor:
+                with self.__connection.cursor() as cursor:
                     cursor.execute(f"SELECT username, user_chat_id FROM {db_entity_name} "
                                    f"WHERE username != '{message.from_user.username}';")
 
@@ -172,7 +173,7 @@ class ComplementSender:
                         cursor.execute(
                             f"UPDATE {db_entity_name} "
                             f"SET complements_sended = complements_sended + 1 "
-                            f"WHERE username = '{self.username}';")  # TODO create function of updating compliment
+                            f"WHERE username = '{self._username}';")  # TODO create function of updating compliment
 
                         random_compliment: str = self.generate_random_compliment()
                         self.__bot.send_message(random_user[-1],
@@ -186,11 +187,11 @@ class ComplementSender:
 
         def get_stat(message: telebot.types.Message) -> None:
             try:
-                with self.connection.cursor() as cursor:
+                with self.__connection.cursor() as cursor:
                     cursor.execute(
                         f"SELECT * "
                         f"FROM {db_entity_name} "
-                        f"WHERE username = '{message.from_user.username}';")
+                        f"WHERE username = '{message.from_user._username}';")
 
                     data: List[Tuple[str, str, int, int]] = cursor.fetchall()
                     self.__bot.send_message(message.from_user.id, f"User {data[0][0]} sent {data[0][3]} "
@@ -201,7 +202,7 @@ class ComplementSender:
 
         def get_top_users() -> None:
             try:
-                with self.connection.cursor() as cursor:
+                with self.__connection.cursor() as cursor:
                     cursor.execute(
                         f"SELECT us.username, us.complements_received "
                         f"FROM {db_entity_name} AS us "
@@ -238,7 +239,7 @@ class ComplementSender:
         return completion.choices[0].message.content
 
     def run(self) -> None:
-        with self.connection.cursor() as cursor:
+        with self.__connection.cursor() as cursor:
             # # do not touch # # cursor.execute(f"DROP TABLE IF EXISTS {db_entity_name};")
             cursor.execute(f"""CREATE TABLE IF NOT EXISTS {db_entity_name} (
             username VARCHAR(50) PRIMARY KEY, 

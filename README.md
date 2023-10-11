@@ -42,3 +42,9 @@
 ### Sending a compliment
 ![pic](img/send_compiment_demo.jpg)
 ![pic](img/send_receive_compliment_demo.jpg)
+
+## TODO list
+
+1. Add a general limit limit for sending random compliments (through a pattern or through a library for openai)
+2. Add documentation
+3. Change the style of action notifications. Need to make it more cartoonish
