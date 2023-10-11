@@ -25,3 +25,20 @@
         /top - Displays the top 5 users among those who received and sent compliments
 
 * The bot also provides special commands for administrators used to monitor the bot’s operation and force changes to the database
+
+* The script also automatically logs various operations, such as user registration, sending a compliment, etc.
+
+## Demo
+
+### Registration in the bot
+![pic](img/start_demo.jpg)
+
+### Receiving complement
+![pic](img/receiving_demo.jpg)
+
+### View top users
+![pic](img/top_demo.jpg)
+
+### Sending a compliment
+![pic](img/send_compiment_demo.jpg)
+![pic](img/send_receive_compliment_demo.jpg)
