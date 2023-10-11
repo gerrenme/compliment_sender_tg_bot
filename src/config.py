@@ -7,6 +7,8 @@ db_name: str = 'compliment_sender'
 db_entity_name: str = "users"
 
 admin_password: str = "1"
+open_ai_key: str = "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"
+telebot_key: str = "6353944311:AAF3BwfqcHAdFX3IqWe6H6HVXC55OXyxEyY"
 info_message: Dict[str, str] = {"send_standard_compliment": "First indicate the id of the person to whom "
                                                             "you want to send a compliment, then (separated by "
                                                             "a space) - the compliment itself",
@@ -34,5 +36,12 @@ info_message: Dict[str, str] = {"send_standard_compliment": "First indicate the 
                                 "no_such_user": "There are no users in the database",
 
                                 "already_register": "You are already registered in my database",
+
+                                "no_user_sad": "It looks like only you are registered in our database :( Invite your "
+                                               "friends so that you and we won't be sad!!",
+
+                                "generate_compliment": "Come up with a nice compliment and send just that",
+
+                                "receive_random_compliment": "You received a compliment from a random user!!\n\n",
 
                                 "no_user_db": "There are no users in the database"}
