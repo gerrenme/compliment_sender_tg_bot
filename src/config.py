@@ -1,7 +1,38 @@
-db_host = '127.0.0.1'
-db_user = 'gerrenme'
-db_password = '1'
-db_name = 'compliment_sender'
-db_entity_name = "users"
+from typing import Dict
 
-admin_password = "1"
+db_host: str = '127.0.0.1'
+db_user: str = 'gerrenme'
+db_password: str = '1'
+db_name: str = 'compliment_sender'
+db_entity_name: str = "users"
+
+admin_password: str = "1"
+info_message: Dict[str, str] = {"send_standard_compliment": "First indicate the id of the person to whom "
+                                                            "you want to send a compliment, then (separated by "
+                                                            "a space) - the compliment itself",
+
+                                "bot_help": "This bot is designed to send anonymous comments to other users who "
+                                            "are also using the bot. You can send the following commands:\n"
+                                            " /start - to start interacting with the bot\n"
+                                            " /send - to send an anonymous compliment to another user\n"
+                                            " /stat - to get statistics on your account\n"
+                                            " /top - to get top 5 users based on received and sent compliments",
+
+                                "miss_command": "Unfortunately, I don't know such commands. Please use the /help "
+                                                "command to see the bot capabilities",
+
+                                "need_register": "You need to register in the bot using the /start command to get "
+                                                 "statistics",
+
+                                "success_register": "You have successfully registered, "
+                                                            "But you can invite your friends to register in the bot "
+                                                            "to send them compliments!!",
+
+                                "success_compliment": "You have successfully sent a compliment!! "
+                                                            "Someone's day just became a little kinder😊",
+
+                                "no_such_user": "There are no users in the database",
+
+                                "already_register": "You are already registered in my database",
+
+                                "no_user_db": "There are no users in the database"}
