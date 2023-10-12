@@ -264,24 +264,28 @@ class ComplementSender:
         while True:
             current_time: datetime = datetime.now()
             time_elapsed = current_time - self.__last_random_compliment_send_time
-            if time_elapsed.total_seconds() > 20 and len(self.__random_compliment_queue) > 0:
-                current_users: Dict[str, str] = self.__random_compliment_queue.popleft()
+            try:
+                if time_elapsed.total_seconds() > 21 and len(self.__random_compliment_queue) > 0:
+                    current_users: Dict[str, str] = self.__random_compliment_queue.popleft()
 
-                sender_username: str = current_users["snd_username"]
-                sender_id: str = current_users["snd_id"]
-                receiver_username: str = current_users["rec_username"]
-                receiver_id: str = current_users["rec_id"]
+                    sender_username: str = current_users["snd_username"]
+                    sender_id: str = current_users["snd_id"]
+                    receiver_username: str = current_users["rec_username"]
+                    receiver_id: str = current_users["rec_id"]
 
-                random_compliment: str = self.generate_random_compliment()
+                    random_compliment: str = self.generate_random_compliment()
 
-                self.__bot.send_message(receiver_id,
-                                        info_message["receive_random_compliment"] + random_compliment)
-                self.__bot.send_message(sender_id, info_message["send_random_compliment"])
+                    self.__bot.send_message(receiver_id,
+                                            info_message["receive_random_compliment"] + random_compliment)
+                    self.__bot.send_message(sender_id, info_message["send_random_compliment"])
 
-                print(f"[LOG_send_random_compliment] User {sender_username} send "
-                      f"random compliment to {receiver_username}")
+                    print(f"[LOG_send_random_compliment] User {sender_username} send "
+                          f"random compliment to {receiver_username}")
 
-                self.update_time()
+                    self.update_time()
+
+            except Exception as _ex:
+                print(f"[LOG_check_sending_random_compliments] Error!! {_ex}")
 
     def update_time(self):
         self.__last_random_compliment_send_time = datetime.now()
