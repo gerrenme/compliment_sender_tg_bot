@@ -7,7 +7,7 @@ db_name: str = 'compliment_sender'
 db_entity_name: str = "users"
 
 admin_password: str = "1"
-open_ai_key: str = "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"
+open_ai_key: str = "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"
 telebot_key: str = "6353944311:AAF3BwfqcHAdFX3IqWe6H6HVXC55OXyxEyY"
 
 info_message: Dict[str, str] = {"send_standard_compliment": "First indicate the id of the person to whom "
