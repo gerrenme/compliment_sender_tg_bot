@@ -1,25 +1,30 @@
 import openai
 import telebot
-import threading
 import psycopg2
+import threading
+from datetime import datetime
+from collections import deque
 
 from random import choice
 from config import (db_host, db_user, db_password, db_name, db_entity_name,
                     admin_password, info_message, telebot_key, open_ai_key)
 from typing import List, Tuple
 
+openai.api_key = open_ai_key
+
 
 class ComplementSender:
     def __init__(self) -> None:
         self.__bot = telebot.TeleBot(telebot_key)
 
-        openai.api_key = open_ai_key
         self.__connection: psycopg2.connect = psycopg2.connect(host=db_host, user=db_user,
-                                                             password=db_password, database=db_name)
+                                                               password=db_password, database=db_name)
         self.__connection.autocommit = True
 
         self._username: str = ""
         self.chat_id: str = "0000000000"
+        self.__last_random_compliment_send_time: datetime = datetime.now()
+        self.__random_compliment_queue: deque = deque([])
 
         @self.__bot.message_handler(commands=['start'])
         def start(message: telebot.types.Message) -> None:
@@ -122,7 +127,7 @@ class ComplementSender:
                     print(f"[LOG_show_all_users] Error!! {_ex}")
             else:
                 print(f'[LOG_show_all_users] Incorrect password from user {self._username}')
-                self.__bot.send_message(message.from_user_id, "Incorrect password")
+                self.__bot.send_message(message.from_user.id, "Incorrect password")
 
         def send_complement(message: telebot.types.Message) -> None:
             try:
@@ -152,8 +157,10 @@ class ComplementSender:
 
                     else:
                         self.__bot.send_message(message.from_user.id, info_message["no_such_user"])
+
             except Exception as _ex:
                 print(f"[LOG_send_complement] Error!! {_ex}")
+                self.__bot.send_message(message.from_user.id, info_message["bot_blocked"])
 
         def send_random_compliment(message: telebot.types.Message) -> None:
             try:
@@ -173,17 +180,22 @@ class ComplementSender:
                         cursor.execute(
                             f"UPDATE {db_entity_name} "
                             f"SET complements_sended = complements_sended + 1 "
-                            f"WHERE username = '{self._username}';")  # TODO create function of updating compliment
+                            f"WHERE username = '{self._username}';")
 
                         random_compliment: str = self.generate_random_compliment()
                         self.__bot.send_message(random_user[-1],
                                                 info_message["receive_random_compliment"] + random_compliment)
-                        
+                        self.__bot.send_message(message.from_user.id, info_message["send_random_compliment"])
+
+                        print(f"[LOG_send_random_compliment] User {message.from_user.username} send "
+                              f"random compliment to {random_user[0]}")
+
                     else:
                         self.__bot.send_message(message.from_user.id, info_message["no_user_sad"])
 
             except Exception as _ex:
                 print(f"[LOG_send_random_compliment] Error!! {_ex}")
+                self.__bot.send_message(message.from_user.id, info_message["bot_blocked"])
 
         def get_stat(message: telebot.types.Message) -> None:
             try:
@@ -191,7 +203,7 @@ class ComplementSender:
                     cursor.execute(
                         f"SELECT * "
                         f"FROM {db_entity_name} "
-                        f"WHERE username = '{message.from_user._username}';")
+                        f"WHERE username = '{message.from_user.username}';")
 
                     data: List[Tuple[str, str, int, int]] = cursor.fetchall()
                     self.__bot.send_message(message.from_user.id, f"User {data[0][0]} sent {data[0][3]} "
@@ -216,14 +228,16 @@ class ComplementSender:
                         f"FROM {db_entity_name} AS us "
                         f"ORDER BY us.complements_sended DESC "
                         f"LIMIT 5;")
-                    top_sended: List[Tuple[str, str, int, int]] = cursor.fetchall()
+                    top_send: List[Tuple[str, str, int, int]] = cursor.fetchall()
 
-                    message_received: str = "\n".join([f'User {t[0]} received {t[1]} complements'
+                    message_received: str = "\n".join([f'💌 User {t[0]} received {t[1]} complements'
                                                        for t in top_received])
-                    message_sended: str = "\n".join([f'User {t[0]} sent {t[1]} complements' for t in top_sended])
+                    message_send: str = "\n".join([f'💘 User {t[0]} sent {t[1]} complements' for t in top_send])
 
-                    self.__bot.send_message(self.chat_id, f"top_receivers are:\n{message_received}\n\n"
-                                                          f"and top_senders are:\n{message_sended}")
+                    self.__bot.send_message(self.chat_id, f"• The following users "
+                                                          f"received the most compliments:\n{message_received}\n\n"
+                                                          f"• The following users sent the most compliments:\n"
+                                                          f"{message_send}")
 
             except Exception as _ex:
                 print(f"[LOG_get_top_users] Error!! {_ex}")
@@ -238,6 +252,18 @@ class ComplementSender:
 
         return completion.choices[0].message.content
 
+    def check_sending_random_compliments(self):
+        while True:
+            current_time: datetime = datetime.now()
+            print(current_time)
+            time_elapsed = current_time - self.__last_random_compliment_send_time
+            if time_elapsed.total_seconds() >= 1:
+                print("20 seconds passed")
+                self.update_time()
+
+    def update_time(self):
+        self.__last_random_compliment_send_time = datetime.now()
+
     def run(self) -> None:
         with self.__connection.cursor() as cursor:
             # # do not touch # # cursor.execute(f"DROP TABLE IF EXISTS {db_entity_name};")
@@ -248,9 +274,12 @@ class ComplementSender:
             complements_sended INT
                            );""")
 
-        main_thread: threading.Thread = threading.Thread(target=self.__bot.polling,
-                                                         kwargs={"none_stop": True, "interval": 0})
-        main_thread.start()
+        bot_polling_thread: threading.Thread = threading.Thread(target=self.__bot.polling)
+        time_check_thread: threading.Thread = threading.Thread(target=self.check_sending_random_compliments)
+        time_check_thread.daemon = True
+
+        time_check_thread.start()
+        bot_polling_thread.start()
 
 
 if __name__ == "__main__":
