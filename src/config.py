@@ -48,6 +48,10 @@ info_message: Dict[str, str] = {"send_standard_compliment": "First indicate the 
                                 "receive_random_compliment": "Congratulations!! You received a "
                                                              "compliment from a random user🎉🎉\n\n",
 
+                                "add_to_queue": "We are currently receiving a lot of compliments for the generation, "
+                                                "so your request has been added to the generation queue. As soon as "
+                                                "the compliment is generated and sent, you will receive a notification",
+
                                 "no_user_db": "There are no users in the database",
 
                                 "bot_blocked": "Something went wrong😞 "

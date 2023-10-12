@@ -2,13 +2,13 @@ import openai
 import telebot
 import psycopg2
 import threading
+
 from datetime import datetime
 from collections import deque
-
 from random import choice
 from config import (db_host, db_user, db_password, db_name, db_entity_name,
                     admin_password, info_message, telebot_key, open_ai_key)
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 openai.api_key = open_ai_key
 
@@ -24,7 +24,7 @@ class ComplementSender:
         self._username: str = ""
         self.chat_id: str = "0000000000"
         self.__last_random_compliment_send_time: datetime = datetime.now()
-        self.__random_compliment_queue: deque = deque([])
+        self.__random_compliment_queue: deque[Dict[str, str]] = deque()
 
         @self.__bot.message_handler(commands=['start'])
         def start(message: telebot.types.Message) -> None:
@@ -182,13 +182,21 @@ class ComplementSender:
                             f"SET complements_sended = complements_sended + 1 "
                             f"WHERE username = '{self._username}';")
 
-                        random_compliment: str = self.generate_random_compliment()
-                        self.__bot.send_message(random_user[-1],
-                                                info_message["receive_random_compliment"] + random_compliment)
-                        self.__bot.send_message(message.from_user.id, info_message["send_random_compliment"])
+                        self.__random_compliment_queue.append({"snd_username": self._username,
+                                                               "snd_id": message.from_user.id,
+                                                               "rec_username": random_user[0],
+                                                               "rec_id": random_user[1]
+                                                               })
 
-                        print(f"[LOG_send_random_compliment] User {message.from_user.username} send "
-                              f"random compliment to {random_user[0]}")
+                        self.__bot.send_message(message.from_user.id, info_message["add_to_queue"])
+
+                        # random_compliment: str = self.generate_random_compliment()
+                        # self.__bot.send_message(random_user[-1],
+                        #                         info_message["receive_random_compliment"] + random_compliment)
+                        # self.__bot.send_message(message.from_user.id, info_message["send_random_compliment"])
+
+                        # print(f"[LOG_send_random_compliment] User {message.from_user.username} send "
+                        #       f"random compliment to {random_user[0]}")
 
                     else:
                         self.__bot.send_message(message.from_user.id, info_message["no_user_sad"])
@@ -255,10 +263,24 @@ class ComplementSender:
     def check_sending_random_compliments(self):
         while True:
             current_time: datetime = datetime.now()
-            print(current_time)
             time_elapsed = current_time - self.__last_random_compliment_send_time
-            if time_elapsed.total_seconds() >= 1:
-                print("20 seconds passed")
+            if time_elapsed.total_seconds() > 20 and len(self.__random_compliment_queue) > 0:
+                current_users: Dict[str, str] = self.__random_compliment_queue.popleft()
+
+                sender_username: str = current_users["snd_username"]
+                sender_id: str = current_users["snd_id"]
+                receiver_username: str = current_users["rec_username"]
+                receiver_id: str = current_users["rec_id"]
+
+                random_compliment: str = self.generate_random_compliment()
+
+                self.__bot.send_message(receiver_id,
+                                        info_message["receive_random_compliment"] + random_compliment)
+                self.__bot.send_message(sender_id, info_message["send_random_compliment"])
+
+                print(f"[LOG_send_random_compliment] User {sender_username} send "
+                      f"random compliment to {receiver_username}")
+
                 self.update_time()
 
     def update_time(self):
