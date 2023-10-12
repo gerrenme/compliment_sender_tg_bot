@@ -7,11 +7,14 @@ db_name: str = 'compliment_sender'
 db_entity_name: str = "users"
 
 admin_password: str = "1"
-open_ai_key: str = "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"
+open_ai_key: str = "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"
 telebot_key: str = "6353944311:AAF3BwfqcHAdFX3IqWe6H6HVXC55OXyxEyY"
 info_message: Dict[str, str] = {"send_standard_compliment": "First indicate the id of the person to whom "
                                                             "you want to send a compliment, then (separated by "
                                                             "a space) - the compliment itself",
+
+                                "send_random_compliment": "You sent a random compliment to a random user. "
+                                                          "Thank you for making other people's days brighter😊",
 
                                 "bot_help": "This bot is designed to send anonymous comments to other users who "
                                             "are also using the bot. You can send the following commands:\n"
@@ -42,6 +45,14 @@ info_message: Dict[str, str] = {"send_standard_compliment": "First indicate the 
 
                                 "generate_compliment": "Come up with a nice compliment and send just that",
 
-                                "receive_random_compliment": "You received a compliment from a random user!!\n\n",
+                                "receive_random_compliment": "Congratulations!! You received a "
+                                                             "compliment from a random user🎉🎉\n\n",
 
-                                "no_user_db": "There are no users in the database"}
+                                "add_to_queue": "We are currently receiving a lot of compliments for the generation, "
+                                                "so your request has been added to the generation queue. As soon as "
+                                                "the compliment is generated and sent, you will receive a notification",
+
+                                "no_user_db": "There are no users in the database",
+
+                                "bot_blocked": "Something went wrong😞 "
+                                               "The user you want to send a compliment to has probably blocked the bot"}
