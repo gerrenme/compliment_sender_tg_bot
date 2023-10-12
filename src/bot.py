@@ -10,31 +10,55 @@ from config import (db_host, db_user, db_password, db_name, db_entity_name,
                     admin_password, info_message, telebot_key, open_ai_key)
 from typing import List, Tuple, Dict
 
+# Set the OpenAI API key
 openai.api_key = open_ai_key
 
 
 class ComplementSender:
+    """
+        ComplementSender Bot class.
+
+        This class implements the ComplementSender bot with features to interact with users, manage a PostgreSQL
+        database, and send and receive compliments.
+    """
     def __init__(self) -> None:
+        """
+                Initialize the ComplementSender bot.
+
+                This constructor initializes the bot and establishes a connection to the PostgreSQL database. It also sets
+                various class variables for user data, message queues, and last random compliment send time.
+
+        """
+
+        # Initialize the Telegram bot
         self.__bot = telebot.TeleBot(telebot_key)
 
+        # Initialize the PostgreSQL database connection
         self.__connection: psycopg2.connect = psycopg2.connect(host=db_host, user=db_user,
                                                                password=db_password, database=db_name)
         self.__connection.autocommit = True
 
+        # User data variables
         self._username: str = ""
         self.chat_id: str = "0000000000"
+
+        # Initialize the last random compliment send time
         self.__last_random_compliment_send_time: datetime = datetime.now()
+        # Initialize a deque to manage the random compliment queue
         self.__random_compliment_queue: deque[Dict[str, str]] = deque()
 
+        # Register users with the /start command
         @self.__bot.message_handler(commands=['start'])
         def start(message: telebot.types.Message) -> None:
             add_user(message)
 
+        # Set user data with the /chat command
         @self.__bot.message_handler(commands=['chat'])
         def get_user_data(message: telebot.types.Message) -> None:
             self.chat_id = message.from_user.id
             self._username = message.from_user.username
 
+        # Handle user text messages
         @self.__bot.message_handler(content_types=['text'])
         def get_text_messages(message: telebot.types.Message) -> None:
             get_user_data(message)
@@ -82,6 +106,18 @@ class ComplementSender:
                     self.__bot.send_message(message.from_user.id, info_message["need_register"])
 
         def add_user(message: telebot.types.Message) -> None:
+            """
+                    Add a user to the database if not already registered.
+
+                    This method registers users in the database if their username is not found. It checks if a user
+                    with the same username already exists in the database.
+
+                    Args:
+                        message (telebot.types.Message): The user's message with a command to start registration.
+
+                    Returns:
+                        None
+            """
             get_user_data(message)
             try:
                 with self.__connection.cursor() as cursor:
@@ -108,6 +144,18 @@ class ComplementSender:
                 print(f"[LOG_add_user] Error!! {_ex}")
 
         def show_all_users(message: telebot.types.Message) -> None:
+            """
+                    Display information about all registered users.
+
+                    This method is used to display information about all registered users. It is accessible by an
+                    admin using a specific command and password.
+
+                    Args:
+                        message (telebot.types.Message): The admin's message with the command to view all users.
+
+                    Returns:
+                        None
+            """
             if check_admin_password(message):
                 try:
                     with self.__connection.cursor() as cursor:
@@ -130,6 +178,18 @@ class ComplementSender:
                 self.__bot.send_message(message.from_user.id, "Incorrect password")
 
         def send_complement(message: telebot.types.Message) -> None:
+            """
+                    Send a user-specified compliment to another user.
+
+                    This method allows a user to send a specific compliment to another user. It updates the database
+                    to reflect the sent compliment.
+
+                    Args: message (telebot.types.Message): The user's message with the compliment and recipient's
+                    username.
+
+                    Returns:
+                        None
+            """
             try:
                 with self.__connection.cursor() as cursor:
                     cursor.execute(f"SELECT * "
@@ -156,13 +216,25 @@ class ComplementSender:
                         print(f'[LOG_send_complement] User {self._username} send complement to {data[0][0]}')
 
                     else:
-                        self.__bot.send_message(message.from_user.id, info_message["no_such_user"])
+                        self.__bot.send_message(message.from_user.id, info_message["no_user_db"])
 
             except Exception as _ex:
                 print(f"[LOG_send_complement] Error!! {_ex}")
                 self.__bot.send_message(message.from_user.id, info_message["bot_blocked"])
 
         def send_random_compliment(message: telebot.types.Message) -> None:
+            """
+                    Send a random compliment to a randomly selected user.
+
+                    This method sends a random compliment to a randomly selected user, updating the database with the
+                    sent compliment.
+
+                    Args: message (telebot.types.Message): The user's message with the command to send a random
+                    compliment.
+
+                    Returns:
+                        None
+            """
             try:
                 with self.__connection.cursor() as cursor:
                     cursor.execute(f"SELECT username, user_chat_id FROM {db_entity_name} "
@@ -190,22 +262,25 @@ class ComplementSender:
 
                         self.__bot.send_message(message.from_user.id, info_message["add_to_queue"])
 
-                        # random_compliment: str = self.generate_random_compliment()
-                        # self.__bot.send_message(random_user[-1],
-                        #                         info_message["receive_random_compliment"] + random_compliment)
-                        # self.__bot.send_message(message.from_user.id, info_message["send_random_compliment"])
-
-                        # print(f"[LOG_send_random_compliment] User {message.from_user.username} send "
-                        #       f"random compliment to {random_user[0]}")
-
                     else:
-                        self.__bot.send_message(message.from_user.id, info_message["no_user_sad"])
+                        self.__bot.send_message(message.from_user.id, info_message["no_user_db"])
 
             except Exception as _ex:
                 print(f"[LOG_send_random_compliment] Error!! {_ex}")
                 self.__bot.send_message(message.from_user.id, info_message["bot_blocked"])
 
         def get_stat(message: telebot.types.Message) -> None:
+            """
+                    Get statistics about the user's sent and received compliments.
+
+                    This method retrieves and sends statistics about the user's sent and received compliments.
+
+                    Args:
+                        message (telebot.types.Message): The user's message with the command to view their statistics.
+
+                    Returns:
+                        None
+            """
             try:
                 with self.__connection.cursor() as cursor:
                     cursor.execute(
@@ -221,6 +296,18 @@ class ComplementSender:
                 print(f"[LOG_get_stat] Error!! {_ex}")
 
         def get_top_users() -> None:
+            """
+                    Get the top users with the most sent and received compliments.
+
+                    This method retrieves and sends information about the top users with the most sent and received
+                    compliments.
+
+                    Args:
+                        None
+
+                    Returns:
+                        None
+            """
             try:
                 with self.__connection.cursor() as cursor:
                     cursor.execute(
@@ -255,12 +342,35 @@ class ComplementSender:
 
     @staticmethod
     def generate_random_compliment() -> str:
+        """
+                Generate a random compliment using the OpenAI GPT-3 model.
+
+                This method generates a random compliment by making a call to the OpenAI GPT-3 model.
+
+                Args:
+                    None
+
+                Returns:
+                    str: A random compliment generated by the GPT-3 model.
+        """
         completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{
             "role": "user", "content": info_message["generate_compliment"]}])
 
         return completion.choices[0].message.content
 
     def check_sending_random_compliments(self):
+        """
+                Continuously check and send random compliments.
+
+                This method runs in a separate thread to continuously check if it's time to send a random compliment
+                to a user. It manages the random compliment queue and sends compliments when necessary.
+
+                Args:
+                    None
+
+                Returns:
+                    None
+        """
         while True:
             current_time: datetime = datetime.now()
             time_elapsed = current_time - self.__last_random_compliment_send_time
@@ -288,9 +398,33 @@ class ComplementSender:
                 print(f"[LOG_check_sending_random_compliments] Error!! {_ex}")
 
     def update_time(self):
+        """
+                Update the last random compliment send time.
+
+                This method updates the last random compliment send time, used to track when it's time to send the next random
+                compliment.
+
+                Args:
+                    None
+
+                Returns:
+                    None
+        """
         self.__last_random_compliment_send_time = datetime.now()
 
     def run(self) -> None:
+        """
+                Run the ComplementSender bot.
+
+                This method is the entry point for running the ComplementSender bot. It sets up the PostgreSQL database, starts
+                a thread for bot polling, and a thread for time-based checks.
+
+                Args:
+                    None
+
+                Returns:
+                    None
+        """
         with self.__connection.cursor() as cursor:
             # # do not touch # # cursor.execute(f"DROP TABLE IF EXISTS {db_entity_name};")
             cursor.execute(f"""CREATE TABLE IF NOT EXISTS {db_entity_name} (

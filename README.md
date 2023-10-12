@@ -45,6 +45,13 @@
 
 ## TODO list
 
-1. Add a general limit limit for sending random compliments (through a pattern or through a library for openai)
-2. Add documentation
-3. Change the style of action notifications. Need to make it more cartoonish
+1. Create a bot base that responds to my messages ✅
+2. Add user registration via PostgreSQL ✅
+3. Add the ability for users to send compliments to other users ✅
+4. Come up with several variations of sending compliments ✅
+5. Add user statistics ✅
+6. Add generation of random compliments via ChatGPT ✅
+7. Figure out how you can limit the number of requests via asynchrony so that the API key does not burn out ✅
+8. Add easy-to-read documentation ✅
+9. Change the style of messages to be more attractive ✅
+10. Come up with a cool design for the bot ✅
