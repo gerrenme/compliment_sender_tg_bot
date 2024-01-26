@@ -2,6 +2,8 @@
 
 ![pic](img/cupidon_bot.png)
 
+Special thanks to https://github.com/karalavo for thinking of the idea.
+
 ## What is the bot designed for?
 
 * "Compliment sender bot" allows any user to send a random compliment to another random user. Users can also send anonymous compliments to other users than the username they know
